@@ -1,0 +1,64 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: test - php ${{matrix.php}} - ${{matrix.os}}
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        php: [7.2, 7.3, 7.4, 8.0, 8.1]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup PHP ${{matrix.php}}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{matrix.php}}
+          coverage: xdebug
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo '::set-output name=dir::$(composer config cache-files-dir)'
+      - name: Set cache composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{steps.composer-cache.outputs.dir}}
+          key: ${{runner.os}}-composer-${{hashFiles('**/composer.json')}}
+          restore-keys: ${{runner.os}}-composer-
+      - run: composer install --no-progress --prefer-dist
+      - run: composer run test
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.1
+          coverage: xdebug
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo '::set-output name=dir::$(composer config cache-files-dir)'
+      - name: Set cache composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{steps.composer-cache.outputs.dir}}
+          key: ${{runner.os}}-composer-${{hashFiles('**/composer.json')}}
+          restore-keys: ${{runner.os}}-composer-
+      - run: composer install --no-progress --prefer-dist
+      - run: composer run coverage
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          name: coverage
+          flags: unittests
+          token: ${{secrets.CODECOV_TOKEN}}
+          files: ./build/coverage/coverage-clover.xml
+          fail_ci_if_error: true
+          verbose: true

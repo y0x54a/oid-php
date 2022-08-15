@@ -1,0 +1,7 @@
+vendor export-ignore
+composer.lock export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+.github export-ignore
+build export-ignore
+test export-ignore
